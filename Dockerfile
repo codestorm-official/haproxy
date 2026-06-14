@@ -1,7 +1,7 @@
 FROM haproxy:latest
 
 # Copy HAProxy config
-COPY haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg
+COPY haproxy.cfg /data/haproxy.cfg
 
 # Expose ports
 EXPOSE 80 8404
