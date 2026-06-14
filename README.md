@@ -1,275 +1,364 @@
-# Simple HAProxy Project with Docker
+# HAProxy on Railway
 
-A lightweight HAProxy load balancer configured to work with Docker containers.
+HAProxy is a high-performance open-source load balancer and reverse proxy used to distribute traffic across backend services. It helps improve availability, route HTTP/TCP traffic, handle failover, and provide a reliable entry point for web applications, APIs, microservices, and internal services.
 
-## Project Structure
+This repository is designed for Railway deployment with a default working HAProxy configuration. You can deploy it with zero configuration, then customize the routing rules later through GitHub, Railway Console, Railway CLI, or a persistent Railway Volume.
 
-```
-haproxy/
-├── Dockerfile              # Docker image definition
-├── haproxy.cfg            # HAProxy configuration file
-├── haproxy.advanced.cfg   # Advanced configuration example
-├── .dockerignore          # Files to exclude from Docker build
-├── .gitignore             # Git ignore rules
-└── README.md              # This file
-```
+## Deploy on Railway
+
+Click the button below to deploy this HAProxy template to Railway with zero configuration:
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/haproxy?referralCode=asepsp&utm_medium=integration&utm_source=template&utm_campaign=generic)
+
+After deployment, HAProxy starts with the default configuration included in the image.
 
 ## Features
 
-- **Load Balancing**: Round-robin load balancing across backend servers
-- **Docker Support**: Easy containerization with Docker and Docker Compose
-- **Health Checks**: Built-in health checks for backend servers
-- **Stats Dashboard**: HAProxy stats page on port 8404
-- **Alpine-based**: Lightweight image using Alpine Linux
+* HAProxy reverse proxy and load balancer
+* Zero-config first deployment
+* Default landing response to avoid server-down state
+* Optional persistent custom config via Railway Volume
+* Supports HTTP and TCP proxying
+* Supports backend health checks
+* Supports Railway private networking
+* Suitable for APIs, web apps, microservices, and internal services
 
-## Prerequisites
+## Common Use Cases
 
-- Docker
-- Docker Compose (optional)
+* Reverse proxy for web apps, APIs, and internal services
+* Load balancing across multiple backend instances
+* Routing requests by domain, path, port, or service type
+* Improving reliability with backend health checks and failover
+* Central traffic entry point for microservices
+* HTTP and TCP proxying for self-hosted applications
 
-## Quick Start
+## Project Structure
 
-### Build and Run
-
-```bash
-# Build the Docker image
-docker build -t haproxy:latest .
-
-# Run the container
-docker run -d \
-  --name haproxy-server \
-  -p 80:80 \
-  -p 8404:8404 \
-  haproxy:latest
-
-# View logs
-docker logs -f haproxy-server
-
-# Access HAProxy Stats
-curl http://localhost:8404/stats
-
-# Stop the container
-docker stop haproxy-server
+```txt
+.
+├── Dockerfile
+├── docker-entrypoint.sh
+├── haproxy.cfg
+└── README.md
 ```
 
-### Configure Backend Servers
+## Configuration Behavior
 
-Edit `haproxy.cfg` and modify the backend section:
+This project supports two HAProxy configuration paths:
 
-```
-backend servers
-    balance roundrobin
-    server api1 api1.example.com:3000 check maxconn 32
-    server api2 api2.example.com:3000 check maxconn 32
-    server api3 api3.example.com:3000 check maxconn 32
-```
+| Config Path                          | Purpose                                               |
+| ------------------------------------ | ----------------------------------------------------- |
+| `/usr/local/etc/haproxy/haproxy.cfg` | Default config included in the image                  |
+| `/data/haproxy.cfg`                  | Optional persistent custom config from Railway Volume |
 
-Then rebuild and run:
+By default, HAProxy uses:
 
-```bash
-docker build -t haproxy:latest .
-docker run -d --name haproxy-server -p 80:80 -p 8404:8404 haproxy:latest
+```txt
+/usr/local/etc/haproxy/haproxy.cfg
 ```
 
-## Volumes & Persistent Data
+If a Railway Volume is attached and this file exists:
 
-HAProxy logs and data are written to the container. To persist data across container restarts, mount a volume to `/data`:
-
-```bash
-# Run with volume mount for persistent data
-docker run -d \
-  --name haproxy-server \
-  -v $(pwd)/data:/data \
-  -p 80:80 \
-  -p 8404:8404 \
-  haproxy:latest
+```txt
+/data/haproxy.cfg
 ```
 
-Or in Railway, add a volume in the Storage section and mount it to `/data`.
+the container automatically uses `/data/haproxy.cfg` instead of the default image configuration.
 
-## Configuration
+Startup behavior:
 
-All configuration is done by editing the `haproxy.cfg` file.
-
-### Basic Setup
-
-1. Edit `haproxy.cfg` to configure backend servers:
-
-```
-backend servers
-    balance roundrobin
-    server web1 192.168.1.10:8080 check
-    server web2 192.168.1.11:8080 check
-    server web3 192.168.1.12:8080 check
+```txt
+/data/haproxy.cfg exists     -> use /data/haproxy.cfg
+/data/haproxy.cfg not found  -> use /usr/local/etc/haproxy/haproxy.cfg
 ```
 
-2. Build and deploy:
+This makes the template work immediately after deployment while still allowing persistent custom routing rules.
 
-```bash
-docker build -t haproxy:latest .
-docker run -d --name haproxy-server -p 80:80 -p 8404:8404 haproxy:latest
+## Default HAProxy Config
+
+The default configuration is stored in:
+
+```txt
+haproxy.cfg
 ```
 
-### Advanced Configuration
+During build, it is copied into the image as:
 
-For more complex setups, see `haproxy.advanced.cfg` which includes examples for:
-- SSL/TLS termination
-- TCP load balancing
-- Custom headers
-
-## Ports
-
-- **80**: Main HAProxy listening port
-- **8404**: HAProxy stats page
-
-## Deployment
-
-### Deploy to Railway
-
-1. Push this repository to GitHub
-2. Connect the repository to Railway
-3. Railway will detect `Dockerfile` automatically
-4. (Optional) Add a volume in Railway:
-   - Go to **Storage** tab in your service settings
-   - Mount path: `/data` (for persistent logs)
-5. Deploy with a single click
-
-### Manual Docker Deployment
-
-```bash
-# Build
-docker build -t haproxy:latest .
-
-# Run
-docker run -d \
-  --name haproxy-server \
-  -p 80:80 \
-  -p 8404:8404 \
-  haproxy:latest
+```txt
+/usr/local/etc/haproxy/haproxy.cfg
 ```
 
-### Deploy to AWS ECS
+The default config returns a simple HTTP 200 response so the service looks healthy immediately after deployment.
 
-```bash
-# Build and push to ECR
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
-docker build -t haproxy:latest .
-docker tag haproxy:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/haproxy:latest
-docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/haproxy:latest
+Example default response:
+
+```txt
+HAProxy is running on Railway. Edit haproxy.cfg to proxy your backend services.
 ```
 
-### Deploy to Kubernetes
+## Custom Configuration with Railway Volume
 
-```bash
-kubectl apply -f - << EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: haproxy
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: haproxy
-  template:
-    metadata:
-      labels:
-        app: haproxy
-    spec:
-      containers:
-      - name: haproxy
-        image: haproxy:latest
-        ports:
-        - containerPort: 80
-        - containerPort: 8404
-        envFrom:
-        - configMapRef:
-            name: haproxy-config
+To use a persistent custom config, attach a Railway Volume mounted at:
+
+```txt
+/data
+```
+
+Then create or update:
+
+```txt
+/data/haproxy.cfg
+```
+
+After editing the config, validate it:
+
+```sh
+haproxy -c -f /data/haproxy.cfg
+```
+
+Then restart or redeploy the Railway service.
+
+HAProxy does not automatically reload config changes just because the file was edited.
+
+## Update Config via Railway Console
+
+Open your HAProxy service in Railway, then open the **Console** tab.
+
+View the default config:
+
+```sh
+cat /usr/local/etc/haproxy/haproxy.cfg
+```
+
+Copy the default config into the Railway Volume:
+
+```sh
+cp /usr/local/etc/haproxy/haproxy.cfg /data/haproxy.cfg
+```
+
+Edit the custom config:
+
+```sh
+vi /data/haproxy.cfg
+```
+
+If `vi` is unavailable, overwrite the file manually:
+
+```sh
+cat > /data/haproxy.cfg <<'EOF'
+global
+    maxconn 4096
+    log stdout format raw local0
+    log stdout format raw local1 notice
+    user root
+    chroot /
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    timeout connect 5000
+    timeout client  50000
+    timeout server  50000
+
+frontend main
+    bind *:80
+    http-request return status 200 content-type text/plain string "Custom HAProxy config from /data is running."
+
+listen stats
+    bind *:8404
+    stats enable
+    stats admin if TRUE
+    stats uri /stats
+
 EOF
 ```
 
-## Monitoring
+Validate the config:
 
-Access the HAProxy stats dashboard:
-```
-http://localhost:8404/stats
-```
-
-## Troubleshooting
-
-### View Logs
-
-```bash
-# View container logs
-docker logs haproxy-server
-
-# Follow logs in real-time
-docker logs -f haproxy-server
+```sh
+haproxy -c -f /data/haproxy.cfg
 ```
 
-### Test Connection
+Then restart or redeploy the service from Railway.
 
-```bash
-# Test HAProxy is responding
-curl -v http://localhost/
+## Update Config via Railway CLI
 
-# Check stats page
-curl http://localhost:8404/stats
+Install and authenticate Railway CLI:
+
+```sh
+railway login
+railway link
 ```
 
-### Backend Health
+Open an interactive shell inside the deployed service:
 
-If backends are not responding:
-
-1. Check HAProxy config is correct:
-```bash
-docker exec haproxy-server cat /usr/local/etc/haproxy/haproxy.cfg
+```sh
+railway ssh
 ```
 
-2. Verify backends are reachable from container:
-```bash
-docker exec haproxy-server curl http://backend-server:8080/
+Copy the default config into the persistent volume:
+
+```sh
+cp /usr/local/etc/haproxy/haproxy.cfg /data/haproxy.cfg
 ```
 
-3. Restart container:
-```bash
-docker restart haproxy-server
+Edit the custom config:
+
+```sh
+vi /data/haproxy.cfg
 ```
 
-## Notes
+Validate it:
 
-- **Configuration**: All configuration is done by editing `haproxy.cfg`
-- **Rebuilding**: Any changes to `haproxy.cfg` require rebuilding the Docker image
-- **Scaling**: To add/remove backend servers, edit `haproxy.cfg` and rebuild
-- **Deployment**: Push to GitHub and connect to Railway for automatic deployments
+```sh
+haproxy -c -f /data/haproxy.cfg
+```
 
-## Getting Started (TL;DR)
+Exit the shell:
 
-```bash
-# 1. Enter project directory
+```sh
+exit
+```
+
+Restart the service:
+
+```sh
+railway restart
+```
+
+Use redeploy if you want to trigger a new deployment:
+
+```sh
+railway redeploy
+```
+
+## Update Config via GitHub
+
+Use this workflow if you want to manage HAProxy changes through GitHub and let Railway redeploy after every push.
+
+1. Fork this repository.
+2. Clone your fork locally:
+
+```sh
+git clone https://github.com/YOUR_USERNAME/haproxy.git
 cd haproxy
-
-# 2. Build the image
-docker build -t haproxy:latest .
-
-# 3. Run the container
-docker run -d --name haproxy-server -p 80:80 -p 8404:8404 haproxy:latest
-
-# 4. Test it
-curl http://localhost/
-
-# 5. View stats
-curl http://localhost:8404/stats
-
-# 6. View logs
-docker logs -f haproxy-server
-
-# 7. Stop
-docker stop haproxy-server
 ```
 
-Your HAProxy load balancer is now running on `http://localhost` with stats on `http://localhost:8404/stats`.
+3. Edit the default HAProxy config:
+
+```txt
+haproxy.cfg
+```
+
+4. Validate locally if HAProxy is installed:
+
+```sh
+haproxy -c -f haproxy.cfg
+```
+
+5. Commit and push your changes:
+
+```sh
+git add .
+git commit -m "Customize HAProxy configuration"
+git push origin main
+```
+
+6. In Railway, connect the service source repo to your fork if it is not already linked.
+7. Future pushes to your fork can trigger automatic redeployments.
+
+Important: GitHub changes update the default image config. If `/data/haproxy.cfg` exists, HAProxy will still use `/data/haproxy.cfg` instead of the Git-based default config.
+
+To use the GitHub config again, remove the custom volume config:
+
+```sh
+rm /data/haproxy.cfg
+```
+
+Then restart or redeploy the service.
+
+## Example Backend Configuration
+
+Example backend for one Railway service:
+
+```haproxy
+backend app_backend
+    balance roundrobin
+    server app1 your-service.railway.internal:3000 check
+```
+
+Example backend for multiple Railway services:
+
+```haproxy
+backend app_backend
+    balance roundrobin
+    server app1 app-1.railway.internal:3000 check
+    server app2 app-2.railway.internal:3000 check
+```
+
+Example frontend using the backend:
+
+```haproxy
+frontend main
+    bind *:80
+    default_backend app_backend
+```
+
+Replace the service names and ports with your actual Railway service private domains and internal ports.
+
+## Roll Back to Default Config
+
+If your custom config breaks or you want to return to the default image config, remove:
+
+```sh
+rm /data/haproxy.cfg
+```
+
+Then restart the service.
+
+On the next startup, HAProxy falls back to:
+
+```txt
+/usr/local/etc/haproxy/haproxy.cfg
+```
+
+## Local Docker Usage
+
+Build the image locally:
+
+```sh
+docker build -t railway-haproxy .
+```
+
+Run it locally:
+
+```sh
+docker run --rm -p 8080:80 railway-haproxy
+```
+
+Open:
+
+```txt
+http://localhost:8080
+```
+
+Validate the config inside the container:
+
+```sh
+docker run --rm railway-haproxy haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg
+```
+
+## Important Notes
+
+* Editing `haproxy.cfg` does not reload HAProxy automatically.
+* Always validate the config before restarting the service.
+* Use `/data/haproxy.cfg` for persistent custom configuration.
+* Use `/usr/local/etc/haproxy/haproxy.cfg` as the default image configuration.
+* If `/data/haproxy.cfg` exists, it takes priority over the default config.
+* If `/data/haproxy.cfg` does not exist, the default image config is used.
+* If the last line of `haproxy.cfg` is missing a newline, HAProxy may fail with a `Missing LF on last line` error.
 
 ## License
 
-MIT
+This project is provided as a deployment template for self-hosting HAProxy on Railway.
